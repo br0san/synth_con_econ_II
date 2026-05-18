@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(notebooklm)",
+      "Bash(notebooklm status *)",
+      "Bash(notebooklm list *)",
+      "Bash(notebooklm use *)",
+      "Bash(notebooklm source *)",
+      "Bash(notebooklm ask *)",
+      "WebSearch",
+      "WebFetch(domain:pypi.org)",
+      "Bash(Get-ChildItem -Directory)",
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(python *)"
+    ]
+  }
+}
