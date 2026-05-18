@@ -89,7 +89,7 @@ Donde $Z_i$ son covariables observables, $\lambda_t$ son factores comunes no obs
 | GDP growth (annual %) | World Bank WDI | WB API → `NY.GDP.MKTP.KD.ZG` |
 | Gross domestic savings (% GDP) | World Bank WDI | WB API → `NY.GNS.ICTR.ZS` |
 | Population (total) | World Bank WDI | WB API → `SP.POP.TOTL` |
-| GDP deflator | World Bank WDI | WB API → `NY.GDP.DEFL.ZS` |
+| GDP deflator inflation (annual %) | World Bank WDI | WB API → `NY.GDP.DEFL.KD.ZG` |
 | Oil exporter dummy | U.S. EIA (2019) | WB API `EN.PET.PROD.KT` o manual |
 | OECD member dummy | OECD (2020) | Manual (~38 países, trivial) |
 | IT classification + adoption year | IMF AREAER (2019) | **Manual** — no disponible vía API |
@@ -104,6 +104,7 @@ Donde $Z_i$ son covariables observables, $\lambda_t$ son factores comunes no obs
 - **Ventana:** 1984–2017 (McCloud original), ampliable a 1984–2023 con datos actualizados
 - **Países:** 104 total (29 IT, 75 no-IT)
 - **Requiremento crítico:** Panel perfectamente balanceado en el período pre-tratamiento (el SCM no tolera missing values en predictores)
+- **NOTA — GDP deflator:** `NY.GDP.DEFL.ZS` (nivel, base year varía por país) **no es comparable entre países**. Se usa `NY.GDP.DEFL.KD.ZG` (tasa de inflación anual). Ver diagnóstico en notebook 01_data_pipeline.ipynb §4.5.
 
 ---
 
