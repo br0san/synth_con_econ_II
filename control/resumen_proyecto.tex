@@ -1,0 +1,204 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Paquetes ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,mexico]{babel}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{ragged2e}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{caption}
+
+% --- Metadatos ---
+\title{\bfseries Efecto del \textit{Inflation Targeting} sobre la Inversión Doméstica en México\\[4pt]
+       \large Replicación y extensión de McCloud (2022) mediante Synthetic Control Method}
+\author{Bruno Sánchez-Andrade \and \textit{[Equipo]}\\[4pt]
+        \small Universidad \textit{[Nombre]} \\ \small \href{https://github.com/brunss02/synth_con_econ_II}{github.com/brunss02/synth\_con\_econ\_II}}
+\date{Mayo 2026}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+% ============================================================
+\section*{1. Pregunta de investigación}
+
+¿Cuál fue el efecto causal de la adopción del régimen de \textit{Inflation Targeting} (IT) en 2001 sobre la inversión doméstica agregada de México, medida como formación bruta de capital fijo (\% PIB)?
+
+% ============================================================
+\section*{2. Antecedentes}
+
+Este trabajo replica y extiende el análisis de \textbf{McCloud (2022)} —``Does domestic investment respond to inflation targeting? A synthetic control investigation'', \textit{International Economics}, 169, 98–134—, quien aplicó el Método de Control Sintético (SCM) a una muestra de 104 países (29 tratados IT, 75 control) para el período 1984–2017.
+
+Los hallazgos principales de McCloud son:
+\begin{itemize}[nosep]
+    \item En 21 de los 29 países que adoptaron IT, \textbf{no se encontró efecto significativo} sobre la inversión doméstica, resultado consistente con la hipótesis de inatención racional.
+    \item En 6 países el efecto fue \textbf{negativo y significativo}, entre ellos México, donde alcanzó \textbf{$-$7.48 puntos porcentuales del PIB en 2008} (pseudo $p$-value = 0.080).
+    \item La autora atribuye este resultado a la \textbf{credibilidad débil} del banco central mexicano —expectativas de inflación persistentemente cerca del techo de la banda— y a \textbf{restricciones del sistema financiero} doméstico.
+    \item El control sintético de México está compuesto por 13 países, encabezados por Níger (21.7\%), Mauritius (17.8\%) y Botswana (10.8\%), con un ajuste pre-tratamiento casi perfecto (RMSPE = 0.11).
+\end{itemize}
+
+% ============================================================
+\section*{3. Metodología}
+
+\subsection*{3.1 Synthetic Control Method (SCM)}
+
+El SCM (Abadie, Diamond \& Hainmueller, 2010) construye un contrafactual de la unidad tratada como una \textbf{combinación convexa} de unidades no tratadas (donantes), minimizando la distancia en predictores y valores pre-tratamiento del outcome. El efecto del tratamiento se estima como:
+\[
+\hat{\alpha}_{1t} = Y_{1t} - \sum_{i=2}^{J+1} \omega_i^* \, Y_{it}, \quad \forall \, t > T_0
+\]
+donde los pesos $\omega_i^* \geq 0$ y $\sum \omega_i = 1$. La inferencia se realiza mediante \textbf{placebos in-space} —aplicando SCM a cada país del donor pool como si fuera tratado— y pseudo $p$-values de Fisher (Firpo \& Possebom, 2018).
+
+\subsection*{3.2 Variables del modelo}
+
+El modelo SCM estima el contrafactual de México combinando dos tipos de información pre-tratamiento: \textbf{predictores base} (medias 1990–2000) y \textbf{special predictors} (cada valor anual del outcome en 1990–2000). La Tabla~\ref{tab:variables} detalla las variables que ingresan en la especificación base, su código WDI y su rol en el modelo.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{Variables que ingresan en el modelo SCM para México}
+\label{tab:variables}
+\begin{tabularx}{\textwidth}{@{} l l l X @{}}
+\toprule
+\textbf{Rol} & \textbf{Variable} & \textbf{Código WDI} & \textbf{Descripción} \\
+\midrule
+Outcome          & Gross capital formation       & \texttt{NE.GDI.TOTL.ZS}    & Formación bruta de capital fijo (\% PIB). Variable dependiente cuyo contrafactual estima el SCM. \\
+\midrule
+\multirow{5}{2.8cm}{Predictor base}
+                & GDP growth          & \texttt{NY.GDP.MKTP.KD.ZG} & Crecimiento anual del PIB real (\%). Controla el ciclo económico. \\
+                & Log population      & \texttt{SP.POP.TOTL}        & Logaritmo de la población total. Controla el tamaño de la economía. \\
+                & GDP deflator inflation & \texttt{NY.GDP.DEFL.KD.ZG} & Inflación anual del deflactor del PIB (\%). Controla la estabilidad de precios.\footnotemark \\
+                & Oil exporter       & \texttt{NY.GDP.PETR.RT.ZS} & Dummy = 1 si las rentas petroleras superan el 10\% del PIB en promedio 1984–2016. Proxy del indicador de la EIA usado por McCloud. \\
+                & OECD member        & Manual                      & Dummy = 1 si el país es miembro de la OCDE. Constante en el tiempo en la especificación actual. \\
+\midrule
+\multirow{2}{2.8cm}{Special predictors}
+                & \multicolumn{2}{l}{\texttt{gross\_capital\_formation} (11 rezagos anuales, 1990–2000)} & Cada valor anual del outcome en el período pre-tratamiento entra como predictor independiente. Esta es la decisión metodológica más importante de McCloud: incluir la trayectoria completa del outcome, no solo su media, permite un ajuste pre-tratamiento casi perfecto (RMSPE = 0.11). \\
+\midrule
+\multicolumn{4}{@{}l}{\textbf{Variables excluidas de la especificación base}} \\
+\midrule
+Excluido        & Gross domestic savings        & \texttt{NY.GNS.ICTR.ZS}    & Ahorro interno bruto (\% PIB). Excluido por ser responsable de $\sim$80\% de las exclusiones de países. La información de ahorro está parcialmente capturada en los 11 rezagos del outcome (por identidad contable ahorro-inversión). \\
+\bottomrule
+\end{tabularx}
+\footnotetext{McCloud lista ``GDP deflator'' sin especificar el código WDI. \texttt{NY.GDP.DEFL.ZS} (nivel) no es comparable entre países por tener año base variable. Usamos la tasa de inflación, que sí lo es.}
+\end{table}
+
+\noindent\textit{Nota:} Variables adicionales consideradas para pruebas de robustez —no incluidas en la especificación base— son: tasa de interés activa (\texttt{FR.INR.LEND}), entradas y salidas de IED (\% PIB, \texttt{BX.KLT.DINV.WD.GD.ZS} y \texttt{BM.KLT.DINV.WD.GD.ZS}), y precios de inversión de Penn World Tables (\texttt{pl\_i}).
+
+\subsection*{3.3 Datos y fuente}
+
+Panel anual 1984–2023 descargado directamente de la API REST del Banco Mundial (World Development Indicators). La implementación completa se realiza en Python con la librería \texttt{pysyncon} (Dataprep, Synth, PlaceboTest, AugSynth).
+
+\subsection*{3.4 Decisiones metodológicas clave}
+
+La replicación de McCloud (2022) requirió tomar decisiones frente a barreras que aparecen al intentar reproducir la especificación original con datos reales del Banco Mundial. La Tabla~\ref{tab:decisiones} documenta cada desviación respecto a la especificación de McCloud —o cada desafío encontrado—, el problema concreto que la motiva, y la solución adoptada.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{Decisiones metodológicas frente a la especificación original de McCloud (2022)}
+\label{tab:decisiones}
+\begin{tabularx}{\textwidth}{@{} p{2.8cm} p{4.2cm} X @{}}
+\toprule
+\textbf{Decisión} & \textbf{Problema} & \textbf{Solución adoptada} \\
+\midrule
+Ventana pre-tratamiento: \textbf{1990–2000} (McCloud: 1984–2000)
+    & La crisis de deuda de los años 80 en economías emergentes introduce volatilidad extrema y datos faltantes en variables financieras. Forzar el inicio en 1984 reduce innecesariamente la muestra sin mejorar el ajuste.
+    & Usar 1990–2000 (11 años). Es suficiente para estimar medias de predictores y la trayectoria del outcome. Lee (2010) tomó una decisión similar por el mismo motivo. \\
+
+Exclusión de \texttt{gross\_savings} de predictores base
+    & \texttt{NY.GNS.ICTR.ZS} (ahorro interno bruto) es responsable de $\sim$80\% de las exclusiones de países por missing values (Japón 12/17 años, Nueva Zelanda 16/17, Malawi 17/17). Con esta variable la muestra cae a 88 países.
+    & Eliminarla. Los 11 rezagos del outcome (inversión) incluidos como \textit{special predictors} capturan la dinámica ahorro-inversión por identidad contable. La muestra crece a 122 países, recuperando donantes clave del sintético de McCloud como Mauritania, Luxemburgo y Guinea-Bissau. \\
+
+GDP deflator: \textbf{tasa de inflación}, no nivel
+    & McCloud lista ``GDP deflator'' como predictor sin especificar el código WDI. \texttt{NY.GDP.DEFL.ZS} (nivel) tiene año base variable por país: México $\approx$ 0.27 vs.\ Alemania $\approx$ 55 en 1984. En una corrida de diagnóstico, el SCM asignó a Alemania 30\% del peso para ``compensar'' esta diferencia artificial, destruyendo el ajuste en inflación (RMSPE = 0.69).
+    & Usar \texttt{NY.GDP.DEFL.KD.ZG} (tasa de inflación anual del deflactor), que sí es comparable entre países. Este cambio eliminó la distorsión en el predictor de inflación y fue la primera de varias correcciones que redujeron el RMSPE progresivamente. \\
+
+Filtrado de agregados regionales del Banco Mundial
+    & La API del Banco Mundial incluye agregados como ``Latin America \& Caribbean'' (LCN), ``World'' (WLD) y ``High income'' (HIC) con códigos ISO de 3 letras válidos. El SCM los utilizaba desproporcionadamente —hasta 43\% combinado en una corrida— porque ofrecen promedios suavizados fáciles de ajustar. Un país no puede tener ``World'' como contrafactual.
+    & Consultar el endpoint \texttt{/country} de la API, que lista solo países miembros reales ($N = 217$), y filtrar usando \texttt{region['id'] != 'NA'}. Esto excluye 49 agregados regionales del donor pool. \\
+
+Oil exporter: \textbf{proxy} vía oil rents ($> 10\%$ PIB)
+    & McCloud clasifica a los exportadores de petróleo usando datos de la U.S. Energy Information Administration (barriles/día promedio 1984–2016), que no están disponibles vía API del Banco Mundial. No hay un indicador WDI directo de producción de petróleo en barriles.
+    & Usar \texttt{NY.GDP.PETR.RT.ZS} (oil rents, \% del PIB) como proxy. Se clasifica como exportador al país con rentas petroleras $> 10\%$ del PIB en promedio 1984–2016. Se identifican 29 países exportadores. \\
+
+Clasificación IT: \textbf{codificación manual} según IMF AREAER (2019)
+    & No existe API pública para la clasificación de países que adoptaron Inflation Targeting ni sus fechas de adopción. McCloud utiliza el IMF Annual Report on Exchange Arrangements and Exchange Restrictions (AREAER), edición 2019.
+    & Codificar manualmente los 29 países IT con sus años de adopción (Table A.1 en McCloud). Se verificó que los 29 nombres coinciden con los de la API del Banco Mundial (e.g., WDI usa ``Czechia'', no ``Czech Republic''). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection*{3.5 Muestra final}
+
+25 países IT (tratados) + 97 no-IT (donantes) = \textbf{122 países}. Se excluyen 4 IT adopters por datos incompletos en 1990–2000 (Chequia, Hungría, Polonia, Rumania) y 1 donante del sintético original de McCloud (Malawi, sin datos de inversión).
+
+\subsection*{3.6 Del donor pool al control sintético: ¿cómo elige el SCM?}
+
+Que la muestra tenga 97 donantes \textbf{no significa que todos ellos se usen en el contrafactual}. El algoritmo SCM resuelve un problema de optimización con dos restricciones que fuerzan una solución \textit{sparse} (pocos pesos positivos):
+
+\begin{enumerate}[nosep]
+    \item \textbf{Pesos no negativos:} $\omega_j \geq 0$ para todo donante $j$. Esto prohíbe la extrapolación: el México sintético debe ser una interpolación de países reales, no una combinación que reste a unos para sumar a otros.
+    \item \textbf{Suma unitaria:} $\sum_{j=1}^{J} \omega_j = 1$. El sintético es una combinación convexa, un promedio ponderado de países donantes.
+\end{enumerate}
+
+Estas restricciones, junto con la minimización de la distancia en predictores y en los 11 valores anuales pre-tratamiento del outcome, producen que la mayoría de los donantes reciban \textbf{peso exactamente cero}. Es una propiedad deseable del SCM: el contrafactual queda anclado en un puñado de países con trayectorias de inversión similares a las de México, en lugar de un promedio difuso sobre toda la muestra.
+
+En nuestra estimación actual, el algoritmo asigna peso positivo a solo \textbf{13 de los 97 donantes disponibles} (los 84 restantes reciben $\omega_j = 0$):
+
+\vspace{4pt}
+\begin{center}
+\footnotesize
+\begin{tabular}{@{} l r r @{}}
+\toprule
+\textbf{País} & \textbf{Peso en nuestro sintético} & \textbf{Peso en McCloud (2022)} \\
+\midrule
+Estados Unidos   & 0.550 & --- \\
+Tanzania         & 0.124 & --- \\
+Madagascar       & 0.091 & --- \\
+China            & 0.065 & --- \\
+Mauritania       & 0.045 & 0.020 \\
+Portugal         & 0.039 & --- \\
+Guinea-Bissau    & 0.022 & 0.011 \\
+Honduras         & 0.016 & --- \\
+Kuwait           & 0.014 & --- \\
+Botswana         & 0.009 & 0.108 \\
+Georgia          & 0.009 & --- \\
+Grecia           & 0.008 & --- \\
+India            & 0.008 & --- \\
+\midrule
+Níger            & ---   & 0.217 \\
+Mauritius        & ---   & 0.178 \\
+Irán             & ---   & 0.078 \\
+Belice           & ---   & 0.047 \\
+Malawi           & ---   & 0.047 \\
+Bahréin          & ---   & 0.033 \\
+Gabón            & ---   & 0.020 \\
+Luxemburgo       & ---   & 0.018 \\
+Sierra Leona     & ---   & 0.013 \\
+Bolivia          & ---   & 0.004 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{4pt}
+
+La comparación revela el problema central de nuestra especificación actual: \textbf{solo 3 de los 13 donantes coinciden} con los de McCloud (Botswana, Mauritania y Guinea-Bissau), y con pesos muy inferiores. Estados Unidos domina el sintético con un 55\% del peso —un país que ni siquiera aparece en el sintético original— porque la dummy \texttt{oecd\_member} actúa como un imán: es el único país grande de la OCDE con datos completos en el donor pool. Esto explica el RMSPE de 0.45 (vs.\ 0.11 de McCloud) y motiva la corrección descrita en la sección~4.
+
+% ============================================================
+\section*{4. Estado actual y próximos pasos}
+
+Los resultados preliminares replican la \textbf{dirección cualitativa} del efecto (gap persistentemente negativo desde 2002, con un mínimo de $-$5.5 pp en 2020), pero el ajuste pre-tratamiento es subóptimo (RMSPE = 0.45 vs.\ 0.11 en McCloud). El sintético está dominado por EE.UU. (55\% del peso), debido a que la dummy \texttt{oecd\_member} actúa como atractor único en el donor pool actual.
+
+El siguiente paso prioritario —en curso— es implementar la \textbf{estratificación del donor pool por estatus no-OCDE}, un robustness check del propio paper de McCloud. Se espera que esta restricción elimine el dominio de EE.UU., reduzca el RMSPE a $\sim$0.12, y recupere la composición del sintético original (Níger, Mauritius, Botswana con pesos significativos).
+
+\vspace{6pt}
+\noindent\rule{\textwidth}{0.4pt}
+\vspace{4pt}
+{\footnotesize\textbf{Referencias principales:} McCloud (2022, \textit{International Economics}); Abadie, Diamond \& Hainmueller (2010, \textit{JASA}); Ben-Michael, Feller \& Rothstein (2021, \textit{JASA}); Firpo \& Possebom (2018, \textit{Journal of Causal Inference}).}
+
+\end{document}
