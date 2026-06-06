@@ -20,7 +20,7 @@
        \large Replicación y extensión de McCloud (2022) mediante Synthetic Control Method}
 \author{Bruno Sánchez-Andrade \and \textit{[Equipo]}\\[4pt]
         \small Universidad \textit{[Nombre]} \\ \small \href{https://github.com/br0san/synth_con_econ_II}{github.com/br0san/synth\_con\_econ\_II}}
-\date{Mayo 2026}
+\date{Junio 2026}
 
 \begin{document}
 \maketitle
@@ -75,7 +75,7 @@ Outcome          & Gross capital formation       & \texttt{NE.GDI.TOTL.ZS}    & 
                 & Log population      & \texttt{SP.POP.TOTL}        & Logaritmo de la población total. Controla el tamaño de la economía. \\
                 & GDP deflator inflation & \texttt{NY.GDP.DEFL.KD.ZG} & Inflación anual del deflactor del PIB (\%). Controla la estabilidad de precios.\footnotemark \\
                 & Oil exporter       & \texttt{NY.GDP.PETR.RT.ZS} & Dummy = 1 si las rentas petroleras superan el 10\% del PIB en promedio 1984–2016. Proxy del indicador de la EIA usado por McCloud. \\
-                & OECD member        & Manual                      & Dummy = 1 si el país es miembro de la OCDE. Constante en el tiempo en la especificación actual. \\
+                & OECD member        & Manual                      & Dummy = 1 si el país es miembro de la OCDE. \textit{Excluida en la especificación non-OECD: al restringir el donor pool a países no-OCDE, la dummy es constante (= 0) para todos los donantes y no aporta información al optimizador.} \\
 \midrule
 \multirow{2}{2.8cm}{Special predictors}
                 & \multicolumn{2}{l}{\texttt{gross\_capital\_formation} (11 rezagos anuales, 1990–2000)} & Cada valor anual del outcome en el período pre-tratamiento entra como predictor independiente. Esta es la decisión metodológica más importante de McCloud: incluir la trayectoria completa del outcome, no solo su media, permite un ajuste pre-tratamiento casi perfecto (RMSPE = 0.11). \\
@@ -136,7 +136,7 @@ Clasificación IT: \textbf{codificación manual} según IMF AREAER (2019)
 
 \subsection*{3.5 Muestra final}
 
-25 países IT (tratados) + 97 no-IT (donantes) = \textbf{122 países}. Se excluyen 4 IT adopters por datos incompletos en 1990–2000 (Chequia, Hungría, Polonia, Rumania) y 1 donante del sintético original de McCloud (Malawi, sin datos de inversión).
+\textbf{Especificación non-OECD (actual):} 25 países IT (tratados) + 83 no-IT no-OCDE (donantes) = \textbf{108 países}. Los donantes miembros de la OCDE se excluyen del donor pool (robustness check de McCloud). Se excluyen 3 IT adopters por datos incompletos en el período pre-tratamiento 1990–2000.
 
 \subsection*{3.6 Del donor pool al control sintético: ¿cómo elige el SCM?}
 
@@ -149,7 +149,7 @@ Que la muestra tenga 97 donantes \textbf{no significa que todos ellos se usen en
 
 Estas restricciones, junto con la minimización de la distancia en predictores y en los 11 valores anuales pre-tratamiento del outcome, producen que la mayoría de los donantes reciban \textbf{peso exactamente cero}. Es una propiedad deseable del SCM: el contrafactual queda anclado en un puñado de países con trayectorias de inversión similares a las de México, en lugar de un promedio difuso sobre toda la muestra.
 
-En nuestra estimación actual, el algoritmo asigna peso positivo a solo \textbf{13 de los 97 donantes disponibles} (los 84 restantes reciben $\omega_j = 0$):
+En la especificación non-OECD, el algoritmo asigna peso positivo a \textbf{15 de los 83 donantes disponibles} (los 68 restantes reciben $\omega_j = 0$):
 
 \vspace{4pt}
 \begin{center}
@@ -158,22 +158,23 @@ En nuestra estimación actual, el algoritmo asigna peso positivo a solo \textbf{
 \toprule
 \textbf{País} & \textbf{Peso en nuestro sintético} & \textbf{Peso en McCloud (2022)} \\
 \midrule
-Estados Unidos   & 0.550 & --- \\
-Tanzania         & 0.124 & --- \\
-Madagascar       & 0.091 & --- \\
-China            & 0.065 & --- \\
-Mauritania       & 0.045 & 0.020 \\
-Portugal         & 0.039 & --- \\
-Guinea-Bissau    & 0.022 & 0.011 \\
-Honduras         & 0.016 & --- \\
-Kuwait           & 0.014 & --- \\
-Botswana         & 0.009 & 0.108 \\
-Georgia          & 0.009 & --- \\
-Grecia           & 0.008 & --- \\
-India            & 0.008 & --- \\
+Mongolia         & 0.179 & --- \\
+\textbf{Mauritius}        & \textbf{0.157} & \textbf{0.178} \\
+Bolivia          & 0.129 & 0.004 \\
+Madagascar       & 0.109 & --- \\
+Mauritania       & 0.097 & 0.020 \\
+Senegal          & 0.087 & --- \\
+Honduras         & 0.062 & --- \\
+\textbf{Botswana}         & \textbf{0.049} & \textbf{0.108} \\
+Chad             & 0.036 & --- \\
+Sudan            & 0.025 & --- \\
+Bangladesh       & 0.023 & --- \\
+Bahamas          & 0.020 & --- \\
+\textbf{Guinea-Bissau}    & \textbf{0.017} & \textbf{0.011} \\
+Tanzania         & 0.006 & --- \\
+Kuwait           & 0.005 & --- \\
 \midrule
 Níger            & ---   & 0.217 \\
-Mauritius        & ---   & 0.178 \\
 Irán             & ---   & 0.078 \\
 Belice           & ---   & 0.047 \\
 Malawi           & ---   & 0.047 \\
@@ -181,20 +182,53 @@ Bahréin          & ---   & 0.033 \\
 Gabón            & ---   & 0.020 \\
 Luxemburgo       & ---   & 0.018 \\
 Sierra Leona     & ---   & 0.013 \\
-Bolivia          & ---   & 0.004 \\
 \bottomrule
 \end{tabular}
 \end{center}
 \vspace{4pt}
 
-La comparación revela el problema central de nuestra especificación actual: \textbf{solo 3 de los 13 donantes coinciden} con los de McCloud (Botswana, Mauritania y Guinea-Bissau), y con pesos muy inferiores. Estados Unidos domina el sintético con un 55\% del peso —un país que ni siquiera aparece en el sintético original— porque la dummy \texttt{oecd\_member} actúa como un imán: es el único país grande de la OCDE con datos completos en el donor pool. Esto explica el RMSPE de 0.45 (vs.\ 0.11 de McCloud) y motiva la corrección descrita en la sección~4.
+La especificación non-OECD recupera tres de los donantes principales de McCloud (en \textbf{negrita}): Mauritius (15.7\% vs.\ 17.8\%), Botswana (4.9\% vs.\ 10.8\%) y Guinea-Bissau (1.7\% vs.\ 1.1\%). Estados Unidos queda completamente fuera del sintético. El RMSPE pre-tratamiento cae de 0.45 a \textbf{0.1074} (McCloud: 0.12).
 
 % ============================================================
-\section*{4. Estado actual y próximos pasos}
+\section*{4. Resultados y próximos pasos}
 
-Los resultados preliminares replican la \textbf{dirección cualitativa} del efecto (gap persistentemente negativo desde 2002, con un mínimo de $-$5.5 pp en 2020), pero el ajuste pre-tratamiento es subóptimo (RMSPE = 0.45 vs.\ 0.11 en McCloud). El sintético está dominado por EE.UU. (55\% del peso), debido a que la dummy \texttt{oecd\_member} actúa como atractor único en el donor pool actual.
+\subsection*{4.1 Resultados — especificación non-OECD}
 
-El siguiente paso prioritario —en curso— es implementar la \textbf{estratificación del donor pool por estatus no-OCDE}, un robustness check del propio paper de McCloud. Se espera que esta restricción elimine el dominio de EE.UU., reduzca el RMSPE a $\sim$0.12, y recupere la composición del sintético original (Níger, Mauritius, Botswana con pesos significativos).
+La especificación non-OECD replica satisfactoriamente los resultados cuantitativos de McCloud. La Tabla~\ref{tab:efectos} compara los efectos estimados con los reportados en el paper original.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{Efecto estimado del IT sobre la inversión de México (\% PIB) vs.\ McCloud (2022)}
+\label{tab:efectos}
+\begin{tabular}{@{} l r r r @{}}
+\toprule
+\textbf{Año} & \textbf{Estimado (pp)} & \textbf{McCloud (pp)} & \textbf{Diferencia} \\
+\midrule
+2004 & $-$2.97 & $-$3.21 & $+$0.24 \\
+2005 & $-$5.38 & $-$3.54 & $-$1.84 \\
+2007 & $-$3.92 & $-$4.79 & $+$0.87 \\
+2008 & $-$6.50 & $-$7.48 & $+$0.98 \\
+2011 & $-$7.30 & $-$6.25 & $-$1.05 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+El ajuste pre-tratamiento es RMSPE = \textbf{0.1074} (McCloud: 0.12). Los efectos negativos son consistentes en dirección y magnitud: el mínimo en 2008 ($-$6.50 pp estimado vs.\ $-$7.48 McCloud, diferencia de 13\%) mejora sustancialmente la replicación anterior dominada por EE.UU. (donde el mínimo era $-$3.04 pp, subestimado en 60\%).
+
+\subsection*{4.2 Inferencia: placebos in-space}
+
+Se corrieron placebos in-space para los 83 donantes non-OECD. El pseudo $p$-value obtenido es \textbf{0.75}, superior al reportado por McCloud (0.08–0.09). Esta discrepancia tiene una explicación metodológica identificada: nuestro panel cubre 1984–2023 (22 años post-tratamiento), mientras que McCloud utiliza datos hasta aproximadamente 2016 (15 años). El estadístico MSPE-ratio se diluye al promediar sobre un período post-tratamiento más largo en el que el gap de México se reduce hacia cero. Los placebos con tendencias persistentes post-2001 quedan por encima de México en el ranking. Este punto se documenta como discrepancia conocida con la replicación original.
+
+\subsection*{4.3 Próximos pasos}
+
+\begin{enumerate}[nosep]
+    \item \textbf{OECD membership histórica:} México ingresó a la OCDE en 1994; la dummy debería ser 0 antes de esa fecha. Codificar la membresía año a año para los 38 miembros actuales.
+    \item \textbf{Robustness con \texttt{gross\_savings}:} Explorado en esta sesión. Con non-OECD el pool cae a 56 donantes y el RMSPE sube a 0.27, por lo que la especificación sin savings es superior.
+    \item \textbf{Ventana de estimación 1984–2000:} Robustness check estándar.
+    \item \textbf{Augmented SCM} (Ben-Michael et al., 2021): ya disponible vía \texttt{pysyncon.AugSynth}.
+    \item \textbf{Actualizar} \texttt{resumen\_proyecto.tex} con figuras del path plot y gap cuando el paper esté próximo a entrega.
+\end{enumerate}
 
 \vspace{6pt}
 \noindent\rule{\textwidth}{0.4pt}

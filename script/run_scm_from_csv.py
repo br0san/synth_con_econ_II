@@ -1,11 +1,11 @@
 """
 SCM para Mexico — carga desde CSV, sin API del Banco Mundial.
 
-Ejecutar desde la carpeta script/:
-    python run_scm_from_csv.py
-
-O con placebos (~5-10 min):
-    python run_scm_from_csv.py --placebos
+Specs disponibles:
+    python run_scm_from_csv.py                  # non-OECD base (sin savings)
+    python run_scm_from_csv.py --savings        # non-OECD + gross_savings
+    python run_scm_from_csv.py --placebos       # incluye placebo tests (~5-10 min)
+    python run_scm_from_csv.py --savings --placebos
 """
 import sys
 import argparse
@@ -18,8 +18,9 @@ from pysyncon.utils import PlaceboTest
 import warnings
 warnings.filterwarnings('ignore')
 
-DATA_DIR = Path('../data')
-OUT_DIR  = Path('../out')
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA_DIR   = SCRIPT_DIR / '../data'
+OUT_DIR    = SCRIPT_DIR / '../out'
 
 # ── Constantes del modelo ────────────────────────────────────────────────────
 
@@ -34,7 +35,9 @@ IT_ADOPTERS = {
     'Thailand': 2000, 'Uruguay': 2007,
 }
 
-BASE_PREDICTORS = ['gdp_growth', 'log_population', 'gdp_deflator_inflation', 'oil_exporter']
+BASE_PREDICTORS_NO_SAVINGS = ['gdp_growth', 'log_population', 'gdp_deflator_inflation', 'oil_exporter']
+BASE_PREDICTORS_SAVINGS    = ['gdp_growth', 'log_population', 'gdp_deflator_inflation', 'oil_exporter', 'gross_savings']
+BASE_PREDICTORS = BASE_PREDICTORS_NO_SAVINGS  # default; sobreescrito por --savings
 OUTCOME         = 'gross_capital_formation'
 TREATMENT_YEAR  = 2001
 PRE_START       = 1990
@@ -132,9 +135,9 @@ def report_results(synth):
     return Z1, synthetic, gap
 
 
-def plot_path(Z1, synthetic, out_dir: Path):
+def plot_path(Z1, synthetic, out_dir: Path, suffix: str = ''):
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.plot(Z1.index, Z1.values,         color='black', lw=2,       label='Mexico (real)')
+    ax.plot(Z1.index, Z1.values,               color='black', lw=2,       label='Mexico (real)')
     ax.plot(synthetic.index, synthetic.values, color='black', lw=2, ls='--', label='Mexico sintetico')
     ax.axvline(x=TREATMENT_YEAR, color='red', ls='--', alpha=0.6, label=f'IT ({TREATMENT_YEAR})')
     ax.set_title(f'Mexico vs Synthetic Mexico: {OUTCOME}')
@@ -143,12 +146,13 @@ def plot_path(Z1, synthetic, out_dir: Path):
     ax.grid(alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    fig.savefig(out_dir / 'mexico_synthetic_control.png', dpi=150, bbox_inches='tight')
+    fname = f'mexico_synthetic_control{suffix}.png'
+    fig.savefig(out_dir / fname, dpi=150, bbox_inches='tight')
     plt.close(fig)
-    print("Guardado: mexico_synthetic_control.png")
+    print(f"Guardado: {fname}")
 
 
-def plot_gap(gap, out_dir: Path):
+def plot_gap(gap, out_dir: Path, suffix: str = ''):
     fig, ax = plt.subplots(figsize=(12, 6))
     ax.plot(gap.index, gap.values, color='black', lw=2)
     ax.axhline(y=0, color='gray', lw=0.8)
@@ -159,12 +163,13 @@ def plot_gap(gap, out_dir: Path):
     ax.grid(alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    fig.savefig(out_dir / 'mexico_treatment_gap.png', dpi=150, bbox_inches='tight')
+    fname = f'mexico_treatment_gap{suffix}.png'
+    fig.savefig(out_dir / fname, dpi=150, bbox_inches='tight')
     plt.close(fig)
-    print("Guardado: mexico_treatment_gap.png")
+    print(f"Guardado: {fname}")
 
 
-def run_placebos(dataprep, synth, out_dir: Path):
+def run_placebos(dataprep, synth, out_dir: Path, suffix: str = ''):
     n_donors = len(dataprep.controls_identifier)
     print(f"\nEjecutando placebos para {n_donors} donantes non-OECD…")
     placebo = PlaceboTest()
@@ -193,30 +198,42 @@ def run_placebos(dataprep, synth, out_dir: Path):
     ax.grid(alpha=0.3)
     ax.legend()
     fig.tight_layout()
-    fig.savefig(out_dir / 'mexico_placebo_tests.png', dpi=150, bbox_inches='tight')
+    fname = f'mexico_placebo_tests{suffix}.png'
+    fig.savefig(out_dir / fname, dpi=150, bbox_inches='tight')
     plt.close(fig)
-    print("Guardado: mexico_placebo_tests.png")
+    print(f"Guardado: {fname}")
     return p_val
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--placebos', action='store_true', help='Correr placebo tests (~5-10 min)')
+    parser.add_argument('--savings',  action='store_true', help='Incluir gross_savings como predictor (pool: 83→56)')
     args = parser.parse_args()
 
+    global BASE_PREDICTORS
+    if args.savings:
+        BASE_PREDICTORS = BASE_PREDICTORS_SAVINGS
+        suffix = '_savings'
+        spec_label = 'non-OECD + gross_savings (56 donantes)'
+    else:
+        BASE_PREDICTORS = BASE_PREDICTORS_NO_SAVINGS
+        suffix = ''
+        spec_label = 'non-OECD base (83 donantes)'
+
     print("=" * 60)
-    print("SCM Mexico — spec non-OECD")
+    print(f"SCM Mexico — {spec_label}")
     print("=" * 60)
 
     df = load_panel()
     df_final, treated_pool, donor_pool = build_sample(df)
     dataprep, synth = fit_scm(df_final, donor_pool)
     Z1, synthetic, gap = report_results(synth)
-    plot_path(Z1, synthetic, OUT_DIR)
-    plot_gap(gap, OUT_DIR)
+    plot_path(Z1, synthetic, OUT_DIR, suffix)
+    plot_gap(gap, OUT_DIR, suffix)
 
     if args.placebos:
-        run_placebos(dataprep, synth, OUT_DIR)
+        run_placebos(dataprep, synth, OUT_DIR, suffix)
     else:
         print("\nTip: usa --placebos para correr los placebo tests in-space.")
 
