@@ -13,7 +13,12 @@
       "Bash(Select-Object -ExpandProperty Name)",
       "Bash(python *)",
       "Bash(Get-ChildItem *)",
-      "Bash(Sort-Object)"
+      "Bash(Sort-Object)",
+      "PowerShell($py = \"$env:USERPROFILE\\\\miniconda3\\\\python.exe\"; & $py -c \"import sys; print\\(sys.path\\)\")",
+      "PowerShell(Get-Process | Where-Object { $_.Name -match \"python|conda\" } | Select-Object Id, Name, CPU, WorkingSet | Format-Table -AutoSize)",
+      "Bash(git -C D:/2026/clases/final_econometria status --short)",
+      "Bash(git -C D:/2026/clases/final_econometria log --oneline -4)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

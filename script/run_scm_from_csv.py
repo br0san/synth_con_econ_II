@@ -72,13 +72,17 @@ def build_sample(df: pd.DataFrame):
     treated_pool   = [c for c in complete_countries if c in IT_ADOPTERS]
     donor_pool_all = [c for c in complete_countries if c not in IT_ADOPTERS]
 
-    oecd_countries = df[df['oecd_member'] == 1]['country_name'].unique()
-    donor_pool     = [c for c in donor_pool_all if c not in oecd_countries]
-    excluded_oecd  = [c for c in donor_pool_all if c in oecd_countries]
+    # non-OECD durante el pre-tratamiento (1990-2000)
+    # Con membresia historica, paises como Chile (OECD 2010) o Colombia (2020)
+    # NO son OECD durante 1990-2000. Pero ambos son IT adopters → no afecta.
+    oecd_pre = df_pre.groupby('country_name')['oecd_member'].max()
+    non_oecd_countries = oecd_pre[oecd_pre == 0].index.tolist()
+    donor_pool     = [c for c in donor_pool_all if c in non_oecd_countries]
+    excluded_oecd  = [c for c in donor_pool_all if c not in non_oecd_countries]
 
-    print(f"Tratados (IT):            {len(treated_pool)}")
-    print(f"Donantes (non-OECD):      {len(donor_pool)}")
-    print(f"Donantes OECD excluidos:  {len(excluded_oecd)}: {sorted(excluded_oecd)}")
+    print(f"Tratados (IT):                {len(treated_pool)}")
+    print(f"Donantes (non-OECD 1990-2000):{len(donor_pool)}")
+    print(f"Donantes OECD excluidos:      {len(excluded_oecd)}: {sorted(excluded_oecd)}")
     print(f"Total muestra:            {len(treated_pool) + len(donor_pool)}")
     print(f"(McCloud: 29 IT + 75 control = 104)")
 
@@ -116,7 +120,7 @@ def report_results(synth):
     weights = synth.weights(round=3, threshold=0.001)
     rmspe   = np.sqrt(synth.mspe())
 
-    print(f"\n── Pesos del control sintetico de Mexico ──")
+    print(f"\n-- Pesos del control sintetico de Mexico --")
     print(weights.to_string())
     print(f"\nRMSPE pre-tratamiento: {rmspe:.4f}  (McCloud: {MCCLOUD_RMSPE})")
 
@@ -125,8 +129,8 @@ def report_results(synth):
     synthetic = synth._synthetic(Z0=Z0)
     gap = Z1 - synthetic
 
-    print(f"\n── Efectos estimados vs McCloud (anios clave) ──")
-    print(f"{'Año':<6} {'Estimado (pp)':>15} {'McCloud (pp)':>15} {'Δ':>10}")
+    print(f"\n-- Efectos estimados vs McCloud (anios clave) --")
+    print(f"{'Anio':<6} {'Estimado (pp)':>15} {'McCloud (pp)':>15} {'Diff':>10}")
     for yr, mc in MCCLOUD_EFFECTS.items():
         if yr in gap.index:
             g = float(gap.loc[yr])
@@ -237,7 +241,7 @@ def main():
     else:
         print("\nTip: usa --placebos para correr los placebo tests in-space.")
 
-    print("\n✓ Listo.")
+    print("\nListo.")
 
 
 if __name__ == '__main__':
