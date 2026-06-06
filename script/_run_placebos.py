@@ -1,5 +1,5 @@
 """Runner auxiliar: computa el test de placebos in-space y escribe la caché que
-consume trabajo_final.qmd: out/mexico_placebo_tests.png y out/placebo_pvalue.txt.
+consume 01_analisis.qmd: out/mexico_placebo_tests.png y out/placebo_pvalue.txt.
 
 El cálculo es costoso (~80 estimaciones SCM). pysyncon.PlaceboTest.fit usa un
 ProcessPoolExecutor que en Windows (multiprocessing *spawn*) es inestable: se cuelga

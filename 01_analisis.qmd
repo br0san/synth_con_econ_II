@@ -1,7 +1,7 @@
 ---
 title: "Efecto del *Inflation Targeting* sobre la inversión doméstica en México (2001): un enfoque de control sintético"
 author:
-  - name: "[Tu nombre]"
+  - name: "Patrick Maxime Destinobles Hernández, Bruno Sánchez Solís, José Manuel Vázquez Nicolás"
     affiliation: "Econometría II"
 date: today
 date-format: long
@@ -21,17 +21,32 @@ keywords: [inflation targeting, control sintético, inversión, México, políti
 jupyter: python3
 ---
 
+::: {.callout-note}
+## Cómo leer y reproducir este documento
+
+**Trabajo Final — Econometría II.** Documento autocontenido y reproducible: todo el
+análisis se ejecuta desde el panel congelado `data/panel_mccloud_mexico.csv` (datos del
+*World Development Indicators* del Banco Mundial), **sin requerir conexión a internet**.
+
+- **Obtención y limpieza de datos** (paso 00, previo): `script/00_datos.ipynb`.
+- **Este documento** (paso 01: análisis, estimación y resultados): `01_analisis.qmd` → PDF y notebook.
+- **Test de placebos** (único cálculo costoso, ~80 estimaciones): se precomputa con
+  `script/_run_placebos.py` y se cachea en `out/`.
+
+*Estructura:* 1 Introducción · 2 Marco teórico · 3 Datos · 4 Análisis descriptivo ·
+5 Estrategia empírica · 6 Resultados · 7 Discusión · 8 Conclusiones.
+:::
+
 ```{python}
 #| label: setup
 #| include: false
-import sys
-from pathlib import Path
-
-# Hace importable el motor de análisis (script/scm.py) sin importar el cwd del render.
-PROJECT_ROOT = Path.cwd()
-sys.path.insert(0, str(PROJECT_ROOT / "script"))
-
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from pathlib import Path
+from pysyncon import Dataprep, Synth
+from IPython.display import Markdown, Image
+
 plt.rcParams["figure.dpi"] = 150
 ```
 
@@ -112,33 +127,76 @@ La confluencia de la literatura teórica y empírica sugiere que México ocupa u
 
 **Membresía OCDE histórica.** A diferencia de una *dummy* constante, codificamos la pertenencia a la OCDE por año de adhesión efectiva. Esto es relevante para el *donor pool*: un país solo se considera donante válido si **no** era miembro de la OCDE durante el período pre-tratamiento (1990–2000). El detalle de esta construcción se discute en la Sección 5.
 
-**Construcción de la muestra.** Se conservan los países con datos completos en todos los predictores y el *outcome* durante 1990–2000, garantizando un panel balanceado en el período de optimización. El código de construcción y estimación reside en `script/scm.py`; la descarga y limpieza de datos se documenta por separado en `script/00_data_pipeline.ipynb` y produce el archivo congelado `data/panel_mccloud_mexico.csv`, que es el insumo de este documento.
+**Construcción de la muestra.** Se conservan los países con datos completos en todos los predictores y el *outcome* durante 1990–2000, garantizando un panel balanceado en el período de optimización. El código de construcción, estimación y graficado se ejecuta de forma **autocontenida** en este documento (Secciones 5 y 6). La descarga y limpieza de datos se documenta por separado en `script/00_datos.ipynb` y produce el archivo congelado `data/panel_mccloud_mexico.csv`, único insumo de datos de este documento.
+
+El siguiente bloque carga el panel congelado y fija los parámetros de la especificación.
+
+```{python}
+#| label: datos
+df = pd.read_csv("data/panel_mccloud_mexico.csv")
+df["year"] = df["year"].astype(int)
+
+# Parámetros de la especificación base
+OUTCOME        = "gross_capital_formation"          # WDI NE.GDI.TOTL.ZS
+PREDICTORS     = ["gdp_growth", "log_population",
+                  "gdp_deflator_inflation", "oil_exporter"]
+TREATMENT_YEAR = 2001
+PRE_START, PRE_END = 1990, 2000
+
+# Año de adopción del IT por país (clasificación FMI / literatura)
+IT_ADOPTERS = {
+    "Australia": 1993, "Canada": 1991, "Finland": 1993, "Iceland": 2001,
+    "Israel": 1992, "Japan": 2013, "Korea, Rep.": 2001, "New Zealand": 1990,
+    "Norway": 2001, "Spain": 1995, "Sweden": 1995, "United Kingdom": 1997,
+    "Brazil": 1999, "Chile": 1991, "Colombia": 2000, "Czechia": 1998,
+    "Dominican Republic": 2012, "Ghana": 2007, "Guatemala": 2005,
+    "Hungary": 2001, "Indonesia": 2005, "Mexico": 2001, "Paraguay": 2013,
+    "Peru": 2002, "Philippines": 2002, "Poland": 1999, "Romania": 2005,
+    "Thailand": 2000, "Uruguay": 2007,
+}
+
+print(f"Panel: {df.shape[0]} filas | {df['country_name'].nunique()} países | "
+      f"{df['year'].min()}–{df['year'].max()}")
+```
 
 # Análisis descriptivo
 
-```{python}
-#| label: load-data
-#| include: false
-import scm
-df = scm.load_panel()
-```
-
-La @fig-mexico-series muestra la trayectoria de la formación bruta de capital fijo en México entre 1984 y 2023. La línea roja marca el año de adopción del IT (2001).
+La @fig-mexico-series muestra tres series de México entre 1984 y 2023: la inversión (nuestro *outcome*), el crecimiento del PIB y la inflación. La línea roja marca el año de adopción del IT (2001).
 
 ```{python}
 #| label: fig-mexico-series
-#| fig-cap: "Formación bruta de capital fijo en México, 1984–2023 (% del PIB)."
-scm.fig_mexico_series(df)
+#| fig-cap: "México: inversión, crecimiento e inflación (1984–2023). Línea roja: adopción del IT."
+mx = df[df["country_name"] == "Mexico"].set_index("year").sort_index()
+
+series = [
+    (OUTCOME,                  "Form. bruta de capital fijo (% PIB)"),
+    ("gdp_growth",             "Crecimiento del PIB (%)"),
+    ("gdp_deflator_inflation", "Inflación, deflactor PIB (%)"),
+]
+fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+for ax, (col, lab) in zip(axes, series):
+    ax.plot(mx.index, mx[col], color="black", lw=1.8)
+    ax.axvline(TREATMENT_YEAR, color="red", ls="--", alpha=0.6)
+    ax.set_ylabel(lab); ax.grid(alpha=0.3)
+axes[-1].set_xlabel("Año")
+fig.tight_layout()
 plt.show()
 ```
+
+La inflación mexicana evidencia su carácter volátil: niveles de dos dígitos en los años ochenta y noventa que solo se estabilizan tras la adopción del IT. Esa volatilidad pre-2001 es justamente la razón por la que el control sintético sobre la inflación falla para México (Sección 2) y por la que elegimos la inversión como *outcome*.
 
 Una primera lectura ingenua compararía la inversión promedio antes y después de 2001. La @tbl-prepost reporta esas medias.
 
 ```{python}
 #| label: tbl-prepost
 #| tbl-cap: "Inversión media de México, pre vs post adopción del IT."
-from IPython.display import Markdown
-Markdown(scm.prepost_summary(df).to_markdown())
+pre  = mx.loc[:TREATMENT_YEAR - 1, OUTCOME].mean()
+post = mx.loc[TREATMENT_YEAR:, OUTCOME].mean()
+tbl = pd.DataFrame({
+    "Periodo": [f"Pre-IT (<{TREATMENT_YEAR})", f"Post-IT (≥{TREATMENT_YEAR})", "Diferencia"],
+    "Inversión media (% PIB)": [round(pre, 2), round(post, 2), round(post - pre, 2)],
+}).set_index("Periodo")
+Markdown(tbl.to_markdown())
 ```
 
 El cuadro revela una aparente paradoja: la inversión promedio fue **mayor** después de 2001 que antes. Concluir de aquí que el IT favoreció la inversión sería, sin embargo, un error de inferencia. La comparación pre/post no controla por lo que habría ocurrido con la inversión en ausencia del IT —es decir, por el contrafactual—. Factores globales como el auge de materias primas de los 2000, el ciclo de liquidez internacional o la propia recuperación tras la crisis de 1995 pudieron elevar la inversión con independencia del régimen monetario. La pregunta causal correcta no es "¿subió la inversión tras el IT?", sino "¿subió **más o menos** de lo que habría subido sin IT?". Responderla requiere construir un contrafactual creíble, que es justamente lo que provee el método de control sintético.
@@ -153,15 +211,68 @@ El cuadro revela una aparente paradoja: la inversión promedio fue **mayor** des
 
 **Inferencia por placebos in-space.** Como el control sintético se aplica a una sola unidad tratada, los errores estándar convencionales no son apropiados [@adhikari2022]. La inferencia se realiza mediante placebos *in-space* [@firpo2018]: se reasigna falsamente el tratamiento a cada país del *donor pool* y se estima su *gap* placebo. Si el efecto estimado para México es grande en relación con la distribución de los efectos placebo, se interpreta como evidencia de un efecto genuino. El pseudo *p-value* es la proporción de placebos cuyo efecto iguala o supera (en magnitud) al de México. Siguiendo la regla de @adhikari2022, un pseudo *p-value* superior a 0.10 indica que **no** hay evidencia estadísticamente significativa de un efecto al nivel convencional. Adhikari advierte, además, que con un *donor pool* pequeño la potencia de esta inferencia es limitada —una salvedad pertinente para nuestra interpretación (Sección 7).
 
-**Implementación.** La estimación se realiza en Python con la librería `pysyncon` (optimización Nelder-Mead). Todo el cómputo de esta sección es reproducible desde el módulo `script/scm.py` a partir del CSV congelado, sin necesidad de acceder a la API del Banco Mundial.
+**Implementación.** Todo el cómputo se ejecuta de forma autocontenida en este documento con la librería `pysyncon` (optimización Nelder-Mead), a partir del CSV congelado y sin acceder a la API del Banco Mundial. Las tres funciones siguientes implementan, respectivamente, la construcción de la muestra (filtro de datos completos y *donor pool* no-OCDE), el ajuste del control sintético y el cálculo del *gap*. El test de placebos —costoso (≈80 estimaciones)— se precomputa con `script/_run_placebos.py`, que cachea la figura y el pseudo *p-value* en `out/`.
+
+```{python}
+#| label: funciones-scm
+def build_sample(df, predictors, pre_start, pre_end=PRE_END):
+    """Filtra países con datos completos en el pre-tratamiento y arma el donor pool no-OCDE."""
+    pre = df[(df["year"] >= pre_start) & (df["year"] <= pre_end)]
+    needed = predictors + [OUTCOME]
+    missing = pre.groupby("country_name")[needed].apply(lambda x: x.isnull().sum().sum())
+    complete = missing[missing == 0].index.tolist()
+
+    treated    = [c for c in complete if c in IT_ADOPTERS]
+    donors_all = [c for c in complete if c not in IT_ADOPTERS]
+    # Membresía OCDE histórica: donante válido solo si NO fue OCDE en el pre-tratamiento
+    non_oecd = pre.groupby("country_name")["oecd_member"].max()
+    non_oecd = non_oecd[non_oecd == 0].index.tolist()
+    donor_pool = [c for c in donors_all if c in non_oecd]
+
+    sample = treated + donor_pool
+    df_f = (df[df["country_name"].isin(sample)]
+            .sort_values(["country_name", "year"]).reset_index(drop=True))
+    return df_f, treated, donor_pool
+
+
+def fit_synth(df_f, donor_pool, predictors, pre_start):
+    """Ajusta el control sintético de México (predictores + rezagos anuales del outcome)."""
+    special = [(OUTCOME, [yr], "mean") for yr in range(pre_start, TREATMENT_YEAR)]
+    dataprep = Dataprep(
+        foo=df_f, predictors=predictors, predictors_op="mean",
+        special_predictors=special, dependent=OUTCOME,
+        unit_variable="country_name", time_variable="year",
+        treatment_identifier="Mexico",
+        controls_identifier=[c for c in donor_pool if c != "Mexico"],
+        time_predictors_prior=range(pre_start, TREATMENT_YEAR),
+        time_optimize_ssr=range(pre_start, TREATMENT_YEAR),
+    )
+    synth = Synth()
+    synth.fit(dataprep=dataprep, optim_method="Nelder-Mead")
+    return dataprep, synth
+
+
+def treatment_gap(synth, pre_start):
+    """Devuelve (observado, sintético, gap) sobre todo el período disponible."""
+    end = int(synth.dataprep.foo["year"].max()) + 1
+    Z0, Z1 = synth.dataprep.make_outcome_mats(time_period=range(pre_start, end))
+    synthetic = synth._synthetic(Z0=Z0)
+    return Z1, synthetic, Z1 - synthetic
+```
 
 # Resultados
 
 ```{python}
-#| label: estimate-base
-#| include: false
-res = scm.estimate()              # especificación base: non-OECD, 1990–2000
-rmspe = res.rmspe
+#| label: estimacion-base
+df_f, treated, donor_pool = build_sample(df, PREDICTORS, PRE_START)
+dataprep, synth = fit_synth(df_f, donor_pool, PREDICTORS, PRE_START)
+
+weights = synth.weights(round=3, threshold=0.001)
+rmspe   = float(np.sqrt(synth.mspe()))
+Z1, synthetic, gap = treatment_gap(synth, PRE_START)
+
+print(f"Tratados (IT): {len(treated)} | Donantes no-OCDE: {len(donor_pool)} "
+      f"| Muestra: {len(treated) + len(donor_pool)} | RMSPE pre: {rmspe:.4f}")
 ```
 
 **El México sintético.** El control sintético de México se compone de 15 economías no-OCDE con peso positivo (@tbl-weights). El ajuste pre-tratamiento es excelente: la raíz del error cuadrático medio de predicción (RMSPE) es 0.1074, comparable al 0.11–0.12 que @mccloud2022 reporta para México en su muestra de buen ajuste.
@@ -169,11 +280,9 @@ rmspe = res.rmspe
 ```{python}
 #| label: tbl-weights
 #| tbl-cap: "Composición del México sintético (pesos > 0.001), especificación non-OECD."
-from IPython.display import Markdown
-w = res.weights[res.weights > 0.001].sort_values(ascending=False)
-wt = w.rename("Peso").to_frame()
-wt.index.name = "País donante"
-Markdown(wt.to_markdown())
+w = weights[weights > 0.001].sort_values(ascending=False).rename("Peso").to_frame()
+w.index.name = "País donante"
+Markdown(w.to_markdown())
 ```
 
 **Trayectoria observada vs contrafactual.** La @fig-path muestra la inversión observada de México frente a la de su sintético. Ambas trayectorias se superponen estrechamente antes de 2001 (reflejo del buen ajuste) y se separan después: la inversión observada queda sistemáticamente **por debajo** de la del contrafactual.
@@ -181,7 +290,13 @@ Markdown(wt.to_markdown())
 ```{python}
 #| label: fig-path
 #| fig-cap: "México observado vs México sintético: formación bruta de capital fijo."
-scm.fig_path(res)
+fig, ax = plt.subplots(figsize=(10, 5.5))
+ax.plot(Z1.index, Z1.values, color="black", lw=2, label="México (real)")
+ax.plot(synthetic.index, synthetic.values, color="black", lw=2, ls="--", label="México sintético")
+ax.axvline(TREATMENT_YEAR, color="red", ls="--", alpha=0.6, label=f"IT ({TREATMENT_YEAR})")
+ax.set_xlabel("Año"); ax.set_ylabel("Formación bruta de capital fijo (% del PIB)")
+ax.grid(alpha=0.3); ax.legend()
+fig.tight_layout()
 plt.show()
 ```
 
@@ -190,7 +305,13 @@ La @fig-gap traduce esa separación en el efecto estimado año a año (el *gap*:
 ```{python}
 #| label: fig-gap
 #| fig-cap: "Efecto estimado del IT sobre la inversión en México (gap, pp del PIB)."
-scm.fig_gap(res)
+fig, ax = plt.subplots(figsize=(10, 5.5))
+ax.plot(gap.index, gap.values, color="black", lw=2)
+ax.axhline(0, color="gray", lw=0.8)
+ax.axvline(TREATMENT_YEAR, color="red", ls="--", alpha=0.6, label=f"IT ({TREATMENT_YEAR})")
+ax.set_xlabel("Año"); ax.set_ylabel("México real − sintético (pp del PIB)")
+ax.grid(alpha=0.3); ax.legend()
+fig.tight_layout()
 plt.show()
 ```
 
@@ -199,55 +320,59 @@ El *gap* es persistentemente negativo durante todo el período post-2001, con un
 ```{python}
 #| label: tbl-effects
 #| tbl-cap: "Efecto estimado del IT sobre la inversión en México vs McCloud (2022), años clave."
-Markdown(res.effects_table.to_markdown())
+MCCLOUD = {2004: -3.21, 2005: -3.54, 2007: -4.79, 2008: -7.48, 2011: -6.25}
+rows = [{"Año": y,
+         "Estimado (pp)": round(float(gap.loc[y]), 2),
+         "McCloud (pp)": m,
+         "Diferencia": round(float(gap.loc[y]) - m, 2)}
+        for y, m in MCCLOUD.items() if y in gap.index]
+Markdown(pd.DataFrame(rows).set_index("Año").to_markdown())
 ```
 
-**Inferencia por placebos.** La @fig-placebos contrasta el *gap* de México (línea roja) con los *gaps* placebo de los donantes no-OCDE. El pseudo *p-value* asociado se reporta a continuación.
+**Inferencia por placebos.** La @fig-placebos contrasta el *gap* de México (línea roja) con los *gaps* placebo de los donantes no-OCDE. Por su costo (≈80 estimaciones SCM), el test se precomputa con `script/_run_placebos.py` y se cachea en `out/`; el bloque siguiente lee esa caché.
 
 ```{python}
 #| label: fig-placebos
 #| fig-cap: "Placebos in-space: gap de México vs gaps de los donantes non-OECD."
-#| echo: false
-from pathlib import Path
-out_dir = Path("out"); out_dir.mkdir(exist_ok=True)
-fig_file = out_dir / "mexico_placebo_tests.png"
+out_dir   = Path("out")
+fig_file  = out_dir / "mexico_placebo_tests.png"
 pval_file = out_dir / "placebo_pvalue.txt"
 
-# Caché manual: el test de placebos es costoso (~83 estimaciones). Si la figura y
-# el p-value ya existen en out/, se reutilizan; si no, se recomputan.
-if fig_file.exists() and pval_file.exists():
-    placebo_pvalue = float(pval_file.read_text().strip())
-else:
-    pb = scm.run_placebos(res)
-    placebo_pvalue = pb.p_value
-    pb.fig.savefig(fig_file, dpi=150, bbox_inches="tight")
-    pval_file.write_text(str(placebo_pvalue))
+if not (fig_file.exists() and pval_file.exists()):
+    raise FileNotFoundError(
+        "Falta la caché de placebos. Genérala con:\n"
+        "  python script/_run_placebos.py chunk 0 4   (y 1 4, 2 4, 3 4)\n"
+        "  python script/_run_placebos.py combine 4")
 
-from IPython.display import Image
+placebo_pvalue = float(pval_file.read_text().strip())
 Image(filename=str(fig_file))
 ```
 
 El pseudo *p-value* de México es 0.75. Bajo la regla de decisión convencional [@adhikari2022], un valor superior a 0.10 implica que **no podemos rechazar la hipótesis nula** de ausencia de efecto al nivel usual. Es decir, aunque el *gap* de México es económicamente grande y persistentemente negativo, no es estadísticamente distinguible de los efectos placebo generados por economías que no adoptaron IT. La Sección 7 discute esta tensión y sus causas.
 
-**Robustez.** La @tbl-robust compara la especificación base con dos alternativas: (i) incluir el ahorro bruto como predictor y (ii) extender la ventana pre-tratamiento a 1984–2000.
+**Robustez.** La @tbl-robust compara la especificación base con dos alternativas: (i) incluir el ahorro bruto como predictor y (ii) extender la ventana pre-tratamiento a 1984–2000. Reutilizamos la estimación base ya calculada y solo ajustamos las dos variantes.
 
 ```{python}
 #| label: tbl-robust
 #| tbl-cap: "Verificaciones de robustez: ajuste y efecto en 2008 por especificación."
-import pandas as pd
-specs = {
-    "Base (non-OECD, 1990–2000)": scm.SCMConfig(),
-    "+ ahorro bruto":             scm.SCMConfig(savings=True),
-    "Ventana 1984–2000":          scm.SCMConfig(pre_start=1984),
-}
+PREDICTORS_SAV = PREDICTORS + ["gross_savings"]
+variantes = [
+    ("Base (non-OECD, 1990–2000)", PREDICTORS,     1990),
+    ("+ ahorro bruto",             PREDICTORS_SAV, 1990),
+    ("Ventana 1984–2000",          PREDICTORS,     1984),
+]
 rows = []
-for name, cfg in specs.items():
-    r = scm.estimate(cfg)
-    gap2008 = float(r.gap.loc[2008]) if 2008 in r.gap.index else float("nan")
-    rows.append({"Especificación": name,
-                 "Donantes": len(r.donor_pool),
-                 "RMSPE pre": round(r.rmspe, 4),
-                 "Gap 2008 (pp)": round(gap2008, 2)})
+for nombre, preds, ps in variantes:
+    if nombre.startswith("Base"):                 # reusar la base (no recalcular)
+        dpool, rm, g = donor_pool, rmspe, gap
+    else:
+        d_f, _, dpool = build_sample(df, preds, ps)
+        _, sy = fit_synth(d_f, dpool, preds, ps)
+        rm = float(np.sqrt(sy.mspe()))
+        _, _, g = treatment_gap(sy, ps)
+    rows.append({"Especificación": nombre, "Donantes": len(dpool),
+                 "RMSPE pre": round(rm, 4),
+                 "Gap 2008 (pp)": round(float(g.loc[2008]), 2)})
 Markdown(pd.DataFrame(rows).set_index("Especificación").to_markdown())
 ```
 

@@ -31,4 +31,4 @@ Thumbs.db
 
 # Quarto render artifacts (intermedios; el PDF final sí se versiona)
 *_files/
-/trabajo_final.tex
+/01_analisis.tex

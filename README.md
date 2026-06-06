@@ -1,9 +1,9 @@
 # Efecto del *Inflation Targeting* sobre la inversión doméstica en México (2001)
 
-Trabajo final de Econometría II. Investigación original que estima el efecto causal de la
+Trabajo final de Econometría II. Investigación que estima el efecto causal de la
 adopción del régimen de *Inflation Targeting* (IT) en México sobre la formación bruta de
 capital fijo, mediante el **método de control sintético**. Toma a McCloud (2022) como
-referencia metodológica, no como objeto de réplica.
+referencia metodológica.
 
 - **Pregunta:** ¿Cuál fue el efecto causal de la adopción del IT en 2001 sobre la inversión
   doméstica agregada en México?
@@ -17,37 +17,41 @@ referencia metodológica, no como objeto de réplica.
 
 | Artefacto | Qué es |
 |---|---|
-| **`trabajo_final.qmd`** → `trabajo_final.pdf` | Documento central (informe tipo paper). Narrativa + código + citas. |
-| `trabajo_final.ipynb` | Notebook de análisis derivado del `.qmd` (`quarto convert`). |
-| `script/00_data_pipeline.ipynb` | Notebook de obtención y limpieza de datos (descarga WDI → congela el CSV). |
+| `script/00_datos.ipynb` | **Paso 00:** obtención y limpieza de datos (descarga WDI → congela el CSV). |
+| **`01_analisis.qmd`** → `01_analisis.pdf` | **Paso 01:** documento central autocontenido (informe tipo paper). Narrativa + código econométrico inline + citas. |
+| `01_analisis.ipynb` | Notebook de análisis derivado del `.qmd` (`quarto convert` + ejecución); entregable oficial. |
 
 ## Arquitectura (separación de capas)
 
 ```
-1. DATOS (run-once, frágil)     script/00_data_pipeline.ipynb  →  data/panel_mccloud_mexico.csv
-2. MOTOR DE ANÁLISIS            script/scm.py   (funciones importables + CLI; única fuente de verdad)
-3. INFORME / PDF               trabajo_final.qmd  →  trabajo_final.pdf   (importa scm.py, lee el CSV)
-4. NOTEBOOK DE ANÁLISIS        quarto convert trabajo_final.qmd  →  trabajo_final.ipynb
+00. DATOS (run-once, frágil)   script/00_datos.ipynb  →  data/panel_mccloud_mexico.csv
+01. ANÁLISIS (autocontenido)   01_analisis.qmd  →  01_analisis.pdf  +  01_analisis.ipynb
+                               (lee el CSV congelado; econometría inline, sin API)
+ ·  Placebos (costoso)         script/_run_placebos.py  →  caché en out/  (lo lee 01_analisis)
+ ·  scm.py                     motor de respaldo/CLI que usa _run_placebos.py
 ```
 
-La capa 1 **no** se re-ejecuta al renderizar: la API del Banco Mundial sufre *rate-limiting*
+El paso 00 **no** se re-ejecuta al analizar: la API del Banco Mundial sufre *rate-limiting*
 que corrompe el CSV en modo headless. El CSV congelado es el insumo de todo lo demás.
 
 ## Estructura del proyecto
 
 ```
-├── trabajo_final.qmd          ← documento central (Quarto → PDF)
+├── 01_analisis.qmd            ← documento central autocontenido (Quarto → PDF + ipynb)
 ├── _quarto.yml                ← configuración de render
 ├── referencias.bib            ← bibliografía (BibTeX, extraída vía NotebookLM)
 ├── requirements.txt
 ├── data/
 │   └── panel_mccloud_mexico.csv   ← panel WDI 1984–2023, 108 países (congelado)
 ├── script/
-│   ├── 00_data_pipeline.ipynb     ← obtención + limpieza de datos (capa 1)
-│   ├── scm.py                     ← motor de análisis (capa 2): estimate(), figuras, CLI
-│   └── run_scm_from_csv.py        ← script original (precursor de scm.py; ver Nota)
+│   ├── 00_datos.ipynb             ← obtención + limpieza de datos (paso 00)
+│   ├── scm.py                     ← motor de respaldo/CLI (lo usa _run_placebos.py)
+│   └── _run_placebos.py           ← regenera la caché del test de placebos
 ├── out/                           ← figuras y caché del test de placebos
-└── control/                       ← planning, handoffs, resumen LaTeX (documentación interna)
+└── control/
+    ├── planning/                  ← documentación de planificación
+    ├── handoffs/                  ← bitácoras de sesiones
+    └── legacy/                    ← artefactos de la etapa de réplica (no son entregable)
 ```
 
 ## Instalación
@@ -58,29 +62,35 @@ pip install -r requirements.txt
 # (MiKTeX o TinyTeX). Quarto trae su propio pandoc.
 ```
 
-## Reproducir el análisis (sin API, segundos)
+## Reproducir el análisis
+
+El análisis principal vive **inline** en `01_analisis.qmd` (se reproduce al renderizar; ver abajo).
+`scm.py` se conserva como motor de respaldo / CLI equivalente:
 
 ```bash
 cd script/
 python scm.py                 # especificación base (non-OECD, 1990–2000)
-python scm.py --placebos      # + placebos in-space (~5–10 min)
 python scm.py --savings       # robustez: + ahorro bruto
 python scm.py --pre1984       # robustez: ventana 1984–2000
 ```
 
-Desde Python / un notebook:
+**Regenerar la caché de placebos** (único cálculo costoso; en paralelo por procesos
+independientes, ~20 min):
 
-```python
-import scm
-res = scm.estimate()                 # SCMResult con .rmspe, .gap, .weights, .effects_table
-scm.fig_path(res); scm.fig_gap(res)  # figuras matplotlib
+```bash
+cd script/
+python _run_placebos.py chunk 0 4   # repetir con 1 4, 2 4, 3 4 (en paralelo)
+python _run_placebos.py combine 4   # combina y escribe out/placebo_pvalue.txt + figura
+# alternativa de un solo proceso (lento, ~80 min): python _run_placebos.py serial
 ```
 
 ## Renderizar el documento
 
 ```bash
-quarto render trabajo_final.qmd --to pdf      # → trabajo_final.pdf
-quarto convert trabajo_final.qmd              # → trabajo_final.ipynb
+quarto render 01_analisis.qmd --to pdf        # → 01_analisis.pdf
+quarto convert 01_analisis.qmd                # → 01_analisis.ipynb
+# (opcional) ejecutar el notebook para embeber salidas:
+jupyter nbconvert --to notebook --execute --inplace 01_analisis.ipynb
 ```
 
 El render lee el CSV congelado y corre el SCM inline (rápido). El test de placebos usa una
@@ -97,11 +107,13 @@ se reutilizan; si no, se recomputan. Borra esos dos archivos para forzar el rec�
 | `requests` | Descarga WDI (solo capa 1) |
 | Quarto + LaTeX | Render del informe a PDF |
 
-## Nota sobre `run_scm_from_csv.py`
+## Nota sobre archivos legacy (`control/legacy/`)
 
-`scm.py` es el sucesor refactorizado de `run_scm_from_csv.py`: misma lógica y mismos
-resultados, pero organizado en funciones importables (sin variables globales) para que el
-documento Quarto pueda llamarlo. `run_scm_from_csv.py` se conserva como referencia histórica.
+La carpeta `control/legacy/` conserva artefactos de la etapa inicial de réplica que **no**
+forman parte del entregable: `run_scm_from_csv.py` (precursor de `scm.py`; misma lógica y
+mismos resultados, pero `scm.py` lo refactoriza en funciones importables sin variables
+globales), utilidades de diagnóstico (`check_savings.py`, `inject_notebook_outputs.py`) y el
+resumen previo en LaTeX (`resumen_proyecto.tex/.pdf`, superado por `01_analisis.pdf`).
 
 ## Referencias principales
 

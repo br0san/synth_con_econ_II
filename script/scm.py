@@ -3,7 +3,9 @@ Motor de análisis SCM para México — única fuente de verdad del modelo.
 
 Diseñado para usarse de dos formas:
 
-1. Importable desde el documento Quarto (trabajo_final.qmd) o un notebook::
+1. Importable desde un notebook o script (el documento 01_analisis.qmd ya no lo
+   importa: incluye su propia copia de la lógica; scm.py se conserva sobre todo
+   como motor de `_run_placebos.py`)::
 
        import scm
        res = scm.estimate(scm.SCMConfig())          # spec base non-OECD
