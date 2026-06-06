@@ -2,9 +2,10 @@
 SCM para Mexico — carga desde CSV, sin API del Banco Mundial.
 
 Specs disponibles:
-    python run_scm_from_csv.py                  # non-OECD base (sin savings)
+    python run_scm_from_csv.py                  # non-OECD base (sin savings, PRE=1990)
     python run_scm_from_csv.py --savings        # non-OECD + gross_savings
     python run_scm_from_csv.py --placebos       # incluye placebo tests (~5-10 min)
+    python run_scm_from_csv.py --pre1984        # robustness: ventana 1984-2000
     python run_scm_from_csv.py --savings --placebos
 """
 import sys
@@ -80,9 +81,9 @@ def build_sample(df: pd.DataFrame):
     donor_pool     = [c for c in donor_pool_all if c in non_oecd_countries]
     excluded_oecd  = [c for c in donor_pool_all if c not in non_oecd_countries]
 
-    print(f"Tratados (IT):                {len(treated_pool)}")
-    print(f"Donantes (non-OECD 1990-2000):{len(donor_pool)}")
-    print(f"Donantes OECD excluidos:      {len(excluded_oecd)}: {sorted(excluded_oecd)}")
+    print(f"Tratados (IT):                  {len(treated_pool)}")
+    print(f"Donantes (non-OECD {PRE_START}-{PRE_END}): {len(donor_pool)}")
+    print(f"Donantes OECD excluidos:        {len(excluded_oecd)}: {sorted(excluded_oecd)}")
     print(f"Total muestra:            {len(treated_pool) + len(donor_pool)}")
     print(f"(McCloud: 29 IT + 75 control = 104)")
 
@@ -212,10 +213,11 @@ def run_placebos(dataprep, synth, out_dir: Path, suffix: str = ''):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--placebos', action='store_true', help='Correr placebo tests (~5-10 min)')
-    parser.add_argument('--savings',  action='store_true', help='Incluir gross_savings como predictor (pool: 83→56)')
+    parser.add_argument('--savings',  action='store_true', help='Incluir gross_savings como predictor (pool: 83->56)')
+    parser.add_argument('--pre1984',  action='store_true', help='Ventana pre-tratamiento 1984-2000 (default: 1990-2000)')
     args = parser.parse_args()
 
-    global BASE_PREDICTORS
+    global BASE_PREDICTORS, PRE_START
     if args.savings:
         BASE_PREDICTORS = BASE_PREDICTORS_SAVINGS
         suffix = '_savings'
@@ -224,6 +226,11 @@ def main():
         BASE_PREDICTORS = BASE_PREDICTORS_NO_SAVINGS
         suffix = ''
         spec_label = 'non-OECD base (83 donantes)'
+
+    if args.pre1984:
+        PRE_START = 1984
+        spec_label += ' + PRE=1984-2000'
+        suffix += '_1984'
 
     print("=" * 60)
     print(f"SCM Mexico — {spec_label}")
