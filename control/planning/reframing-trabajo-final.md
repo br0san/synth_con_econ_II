@@ -5,6 +5,75 @@
 
 ---
 
+## 0. Lineamientos oficiales del Trabajo Final
+
+> **Fuente:** Diapositivas 6–9 de la presentación de la clase (transcritas vía NotebookLM).
+> **Profesores:** Benjamín Oliva, Omar Alfaro | Econometría II | Abril de 2026
+
+### Diapositiva 6/11 — Conformación de equipos y entregables
+
+**Equipos**
+Se podrán conformar equipos de 2 a 3 personas. Los equipos pueden ser distintos a los conformados para la tarea-examen.
+
+**Entregables:**
+1. Un archivo en Jupyter Notebook (Python) o en Markdown (R).
+2. Las bases de datos, imágenes y demás insumos necesarios para reproducir el análisis.
+
+**El archivo principal deberá incluir:**
+- planteamiento del problema,
+- hipótesis de trabajo,
+- análisis descriptivo,
+- estimación econométrica,
+- interpretación de resultados.
+
+### Diapositiva 7/11 — Estructura sugerida (I)
+
+1. **Introducción**
+   - Motivación del tema
+   - Relevancia del problema
+   - Breve revisión de literatura
+   - Hipótesis a evaluar
+
+2. **Descripción de los datos**
+   - Fuentes
+   - Construcción o limpieza de la base
+   - Definición de variables
+
+3. **Análisis descriptivo**
+   - Gráficas
+   - Cuadros
+   - Interpretación preliminar
+
+### Diapositiva 8/11 — Estructura sugerida (II)
+
+4. **Estimación del modelo**
+   - Metodología
+   - Resultados principales
+   - Discusión de hallazgos
+
+5. **Conclusiones**
+   - Síntesis de resultados
+   - Discusión sobre la hipótesis planteada
+   - Limitaciones y posibles extensiones
+
+> **Importante:** El trabajo debe ser claro, ordenado y reproducible.
+
+### Diapositiva 9/11 — Criterios generales de evaluación
+
+**Se evaluará:**
+- Claridad de la pregunta de investigación
+- Coherencia entre hipótesis y método
+- Calidad del análisis descriptivo
+
+**También se evaluará:**
+- Solidez de la estimación econométrica
+- Interpretación de resultados
+- Reproducibilidad del trabajo
+
+> **Nota sobre extensión:** No se especifica ninguna instrucción sobre extensión mínima o máxima en ninguna de las diapositivas.
+
+---
+
 ## 1. Diagnóstico: dónde estamos y qué nos falta
 
 ### Lo que tenemos (materia prima)

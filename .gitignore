@@ -26,3 +26,9 @@ Thumbs.db
 *.fls
 *.fdb_latexmk
 *.synctex.gz
+
+/.quarto/
+
+# Quarto render artifacts (intermedios; el PDF final sí se versiona)
+*_files/
+/trabajo_final.tex

@@ -1,6 +1,6 @@
 """
 inject_notebook_outputs.py
-Actualiza las celdas con outputs stale en 01_data_pipeline.ipynb usando
+Actualiza las celdas con outputs stale en 00_data_pipeline.ipynb usando
 los resultados de la spec non-OECD ya verificados.
 
 Celdas afectadas:
@@ -26,7 +26,7 @@ from pysyncon import Dataprep, Synth
 import warnings
 warnings.filterwarnings('ignore')
 
-NB_PATH   = Path('../script/01_data_pipeline.ipynb')
+NB_PATH   = Path('../script/00_data_pipeline.ipynb')
 DATA_DIR  = Path('../data')
 OUT_DIR   = Path('../out')
 

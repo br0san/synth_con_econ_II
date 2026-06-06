@@ -1,0 +1,24 @@
+project:
+  title: "Trabajo Final — Econometría II"
+
+# Configuración compartida del documento. Los metadatos específicos
+# (título, autores, resumen) viven en el YAML de trabajo_final.qmd.
+bibliography: referencias.bib
+lang: es
+
+format:
+  pdf:
+    pdf-engine: xelatex
+    documentclass: article
+    papersize: letter
+    geometry:
+      - margin=1in
+    fontsize: 11pt
+    number-sections: true
+    toc: true
+    toc-depth: 2
+    colorlinks: true
+    code-fold: true
+    code-tools: false
+    fig-pos: "H"
+    cite-method: citeproc
